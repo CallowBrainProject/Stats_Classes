@@ -1,0 +1,126 @@
+---
+title: "EDMS646 HW2"
+author: "Daniel Callow"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(sjstats)
+library(multcomp)
+```
+
+## One-Way ANOVA and Post-Hoc Comparisons
+
+## Part 1
+There are 20 Gadd Severity Index (GSI) measurements per helmet group. Helmet group one has a an average GSI of 1070.30($\pm$ 152.27), group two has an average GSI of 1069.85($\pm$ 172.55), group three has an average GSI of 1116.65($\pm$ 320.94), and group four has an average GSI of 1359.65($\pm$ 207.19). Based on visual inspection the boxplots the GSI scores of group 4 seems to be higher than the other helmet groups relative to the with group variability, thus indicating it might be plausible that an omnibus F-test would yield a significant result.
+```{r, fig1, fig.height=3, fig.width=4} 
+
+rm(list=ls())
+
+
+data <- read.csv(file.choose(), header = TRUE, na.strings = "-99")
+data$Helmet <- as.factor(data$Helmet)
+str(data)
+
+group_by(data,Helmet) %>% #Summarize the data by group
+  summarise(
+    count = n(),
+    'Mean' = mean(GSI, na.rm = TRUE),
+    'Median' = median(GSI,na.rm=TRUE),
+    'Interquartile Range' = IQR(GSI,na.rm = TRUE),
+    'Standard Deviation' = sd(GSI, na.rm = TRUE)
+    )
+
+ggplot(data, aes(y=GSI,x=Helmet))+geom_boxplot()+ylab("Gadd Severity Index")+ggtitle("Gadd Severity Index by Lacrosse Helmet Model")+theme(plot.title = element_text(hjust = 0.5))
+
+```
+
+## Part 2
+The one way ANOVA model is $y_ij$ = $\mu$ + $\alpha_j$ + $e_ij$. In this model, y is the value for a certain observation i in group j. $\mu$ is the mean score across all observations in all groups. $\alpha_j$ is the deviation between the overall mean and group j's mean. $e_ij$ is the individual's deviation from their group mean.
+
+```{r}
+mod1 = aov(data = data, GSI~Helmet)
+
+```
+
+## Part 3
+$H_0$:$\mu_1$=$\mu_2$=$\mu_3$=$\mu_4$
+$H_1$:At least one mean is different from the others
+
+A one way analysis of variance was used to compare the mean GSI of helmet model one (M=1070.30,SD=152.27), two (M=1069.85, SD=172.55), three (M=1116.65, SD=320.94), and four (M=1359.65, SD=207.19). Using an alpha level of .05, this test was found to be statistically significant, (F(3,76)=7.76, p<.001). The strength of the relationship between helmet type and head impact as indexed by $\eta^2$ was 0.23, which suggesta 23% of the variance in head impact is attributable to differences in helmet type.The strength of the relationship as indexed by $\omege^2$ was 0.20, which suggests 20% of the variance in head impact is attributable to differences in helmet type.
+```{r}
+summary(mod1)
+eta_sq(mod1)
+omega_sq(mod1)
+
+```
+## Part 4
+Based on the Q-Q plot the distribution of GSI scores among the different groups of helmets does not seem to be normally-distributed.
+
+```{r, fig.height=3, fig.width=3}
+plot(mod1, which = 2)
+res = resid(mod1)
+shapiro.test(res)
+```
+
+## Part 5
+A Levene's test indicates that the assumption of homoscedacity is violated and therefore variances in GSI cannot be assumed to be equal among the helmet groups.This is further supported by the graph of residuals versus fitted values as the groups show different scatter.
+```{r, fig.height=3, fig.width=3}
+plot(mod1, which = 5)
+leveneTest(mod1)
+```
+## Part 6
+The Benjamini-Yekutieli and Bonferroni procedure for controlling false discovery rates are slightly different in terms of corrected p-values, with the the bonferroni corrected p-values being slightly higher for contrast 3v4 and BY being. This indicates that the bonferroni procedure is a more conservative means of controlling the family wise error rate than the Benjamini-Yekutieli procedure.
+```{r}
+
+con <- matrix(c(1,-1,0,0,
+                1,0,-1,0,
+                1,0,0,-1,
+                0,1,-1,0,
+                0,1,0,-1,
+                0,0,1,-1), nrow=6, byrow=T)
+
+Input = ("
+         Contrast.Name   1  2   3   4
+         1vs2            1 -1   0   0  
+         1vs3            1  0  -1   0     
+         1vs4            1  0   0  -1     
+         2vs3            0  1  -1   0
+         2vs4            0  1   0  -1
+         3vs4            0  0   1  -1
+         ")
+
+
+
+
+Helmets = as.matrix(read.table(textConnection(Input), header=TRUE, row.names=1))
+Helmets
+G1 = glht(mod1, 
+         linfct = mcp(Helmet = Helmets))
+
+summary(G1, test=adjusted("BY"))
+
+summary(G1, test=adjusted("bonferroni"))
+
+```
+
+## Part 7
+We can determine the number of orthogonal contrast by subtracting the number of groups by 1 (J-1) and thus there should be 4-1 or 3 orthogonal contrasts. The sum of coeficients in each linear contrast is 0 and the sum of the products of the coefficients in any two contrasts is equal to 0 and thus all three contrasts are orthogonal.
+```{r}
+
+orth_contr=matrix(c( 1,-1, 0,  0,
+                     0, 0, 1, -1,
+                    .5,.5,-.5,-.5), nrow=3, byrow=T)
+rowSums(orth_contr) # Find the sum of each row => should be 0 if orthogonal contrasts
+sum(apply(orth_contr[c(1,2),],2, prod)) # Find the product of row 1 and 2 columns and sum to determine if orthogonal
+sum(apply(orth_contr[c(1,3),],2, prod)) # Find the product of row 1 and 3 columns and sum to determine if orthogonal
+sum(apply(orth_contr[c(1,3),],2, prod)) # Find the product of row 2 and 3 columns and sum to determine if orthogonal
+
+```
