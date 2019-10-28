@@ -1,0 +1,46 @@
+---
+title: "EDMS646 HW3"
+author: "Daniel Callow"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(sjstats)
+library(multcomp)
+library(psych)
+library(reshape)
+library(ez)
+```
+
+## Part 1 Repeated Measures ANOVA
+
+```{r}
+rm(list=ls())
+dat = read.csv(file.choose(), na.strings = -99, header = T)
+```
+```{r}
+dat$subj <- seq(1,47,1)
+
+dat.long <- reshape(data = dat, varying = 1:5, v.names = "y", timevar
+                   = "time", idvar = "subj", ids = 1:47, direction = "long")
+
+dat.long=dat.long[order(dat.long$subj),]
+
+dat.long$t=factor(dat.long$time)
+dat.long$g=factor(dat.long$group)
+dat.long$s=factor(dat.long$subj)
+
+mod.1 <- aov(y ~ t + Error(s/t), data = dat.long) # must calculate our own error term
+mod.1
+
+summary(mod.1)
+
+interaction.plot(dat.long$t, dat.long$s, dat.long$y, xlab = "time", ylab = "immune response", col=dat.long$s, legend = F)
+```
