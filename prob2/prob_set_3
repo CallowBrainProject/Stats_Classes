@@ -1,0 +1,49 @@
+---
+title: "EDMS646 HW3"
+author: "Daniel Callow"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(sjstats)
+library(multcomp)
+library(psych)
+```
+
+## Factorial Anova
+
+## Part 1
+The study design is balanced (n=10 per group). The average Gadd severity index (GSI) score for side 1 helmet 1 is 1166.1($\pm152.4$), side 2 helmet 1 is 953.5($\pm73.0$), side 1 helmet 2 is 1110.2($\pm216.2$), side 2 helmet 2 is 1024.6($\pm105.1$), side 1 helmet 3 is ($\pm845.0$), side 2 helmet 3 is($\pm1455.7$), side 1 helmet 4 is($\pm1224.7$), and side 2 helmet 4 is($\pm1496.5$).
+```{r Part1, fig.height=3, fig.width=4} 
+
+rm(list=ls())
+
+
+data <- read.csv(file.choose(), header = TRUE, na.strings = "-99")
+data$Helmet <- as.factor(data$Helmet)
+data$Side <- as.factor(data$Side)
+str(data)
+
+group_by(data,Helmet,Side) %>% #Summarize the data by group
+  summarise(
+    count = n(),
+    'Mean' = mean(GSI, na.rm = TRUE),
+    'Median' = median(GSI,na.rm=TRUE),
+    'Standard Deviation' = sd(GSI, na.rm = TRUE),
+    'skew' = skew(GSI,na.rm = TRUE)
+    )
+
+with(data = data, table(Helmet,Side)) 
+
+data$HelmetSide = interaction(data$Helmet,data$Side)
+
+ggplot(data, aes(y=GSI,x=HelmetSide))+geom_boxplot()+ylab("Gadd Severity Index")+ggtitle("Gadd Severity Index by Lacrosse Helmet")+theme(plot.title = element_text(hjust = 0.5))
+
+```
