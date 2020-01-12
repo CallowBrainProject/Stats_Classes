@@ -1,0 +1,99 @@
+---
+title: "EDMS646 HW5"
+author: "Daniel Callow"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+options(tinytex.verbose=TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+library(ggplot2)
+library(dplyr)
+library(car)
+library(sjstats)
+library(ez)
+library(multcomp)
+library(psych)
+library(reshape)
+library(QuantPsyc)
+library(tidyverse)
+library(carData)
+library(QuantPsyc)
+library(scatterplot3d)
+library(ppcor)
+library(lmSupport)
+library(psych)
+
+
+```
+
+## Fisher R to Z transformation
+
+#Part 1 Statistical Test with Zscore
+$H_0$: $\rho$=.7
+$H_a$: $\rho$$\neq$.7
+
+A test of the pearson correlation was used to address the hypothesis that the IQ of twins raised in their biological home (M=97.36, SD = 14.69) and twins raised in a foster home (M=98.11, SD=15.21) is 0.7. Using an alpha level of .01 this test was found to be statistically significant r(51)=.88, p<.001 (two-tailed), rejecting the null hypothesis of a strong positive relationship between the IQ of twins raised in their biological home verus a foster home for an even stronger positive relationship.
+
+```{r}
+rm(list=ls())
+# Import IQdata
+dat = read.csv(file.choose(), na.strings = -99, header = T)
+```
+```{r}
+
+r=cor(x=dat$OwnIQ, y=dat$FostIQ, method="pearson")
+
+n <- sum( complete.cases(dat$OwnIQ, dat$FostIQ) )           	# sample size
+r <- cor(dat$OwnIQ, dat$FostIQ, use = "complete.obs")       	# correlation b/w fees and room
+z <- ( fisherz(r)-fisherz(.7))*sqrt(n-3)          		# z statistic
+z
+
+## Calculate p-value
+
+p=2*pnorm(-abs(z))
+p
+```
+
+# Part 2 Confidence Interval
+Our level of certainty is 99% for predicting that the true population correlation $\rho$ falls within the interval of (.76, .94). We can say with 99% confidence that the true population correlation in weight gain between twins raised in their biological parents house and a foster home is captured by this interval. Our hypothesis of a .7 correlation does not fall within this interval at an alpha level of .01 and thus we reject the null hypothesis.
+```{r}
+mn = fisherz(r)
+se=1/sqrt(n-3)
+
+error = qnorm(.995)*se
+
+left = mn-error
+right = mn+error
+
+mnr= fisherz2r(mn)
+leftr=fisherz2r(left); leftr
+rightr=fisherz2r(right); rightr
+```
+
+## Multiple Linear Regression
+
+# Part 1
+y=$\beta_0$+$\beta_1$$x_1$+$\beta_2$$x_2$+$\beta_3$$x_3$+$\beta_4$$x_4$+$\epsilon$
+```{r}
+# Import HSB300
+dat2 = read.csv(file.choose(), na.strings = -99, header = T)
+```
+```{r}
+dat2$female.f=as.factor(dat2$female)
+dat2$race.f=as.factor(dat2$race)
+dat2$ses.f=as.factor(dat2$ses)
+```
+
+# Part 2
+
+The model including locus of control, self concept, gender, race, and socio-economic status as predictors explains 31.1% of variance in math test scores ($R^2$=31.1, F(8,291)=17.88, p<.001).This model explains a large amount of the variance in math test performance. 
+```{r}
+mod1=lm(math~locus+concept+female.f+race.f+ses.f, data=dat2)
+summary(mod1)
+#lm.beta(mod1)
+modelEffectSizes(mod1)
+```
